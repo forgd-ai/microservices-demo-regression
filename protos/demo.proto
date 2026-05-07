@@ -24,6 +24,7 @@ service CartService {
     rpc AddItem(AddItemRequest) returns (Empty) {}
     rpc GetCart(GetCartRequest) returns (Cart) {}
     rpc EmptyCart(EmptyCartRequest) returns (Empty) {}
+    rpc GetCartHistory(GetCartHistoryRequest) returns (CartHistory) {}
 }
 
 message CartItem {
@@ -49,12 +50,24 @@ message Cart {
     repeated CartItem items = 2;
 }
 
+message GetCartHistoryRequest {
+    string user_id = 1;
+    int32 limit = 2;
+}
+
+message CartHistory {
+    string user_id = 1;
+    // Recently added product ids for this user, most recent first.
+    repeated string product_ids = 2;
+}
+
 message Empty {}
 
 // ---------------Recommendation service----------
 
 service RecommendationService {
   rpc ListRecommendations(ListRecommendationsRequest) returns (ListRecommendationsResponse){}
+  rpc ListFrequentlyBoughtTogether(FBTRequest) returns (FBTResponse){}
 }
 
 message ListRecommendationsRequest {
@@ -64,6 +77,25 @@ message ListRecommendationsRequest {
 
 message ListRecommendationsResponse {
     repeated string product_ids = 1;
+}
+
+message FBTRequest {
+    string user_id = 1;
+    // Current cart contents.
+    repeated string product_ids = 2;
+    int32 max_results = 3;
+}
+
+message FBTItem {
+    string product_id = 1;
+    // Number of historical baskets pairing this item with the cart contents.
+    int32 cooccurrence_count = 2;
+    // Human-readable reason, e.g. "Often bought with Sunglasses".
+    string reason = 3;
+}
+
+message FBTResponse {
+    repeated FBTItem items = 1;
 }
 
 // ---------------Product Catalog----------------

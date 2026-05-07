@@ -22,6 +22,7 @@ service CartService {
     rpc AddItem(AddItemRequest) returns (Empty) {}
     rpc GetCart(GetCartRequest) returns (Cart) {}
     rpc EmptyCart(EmptyCartRequest) returns (Empty) {}
+    rpc GetCartHistory(GetCartHistoryRequest) returns (CartHistory) {}
 }
 
 message CartItem {
@@ -45,6 +46,16 @@ message GetCartRequest {
 message Cart {
     string user_id = 1;
     repeated CartItem items = 2;
+}
+
+message GetCartHistoryRequest {
+    string user_id = 1;
+    int32 limit = 2;
+}
+
+message CartHistory {
+    string user_id = 1;
+    repeated string product_ids = 2;
 }
 
 message Empty {}
