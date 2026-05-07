@@ -116,6 +116,33 @@ func (fe *frontendServer) getRecommendations(ctx context.Context, userID string,
 	return out, err
 }
 
+type fbtView struct {
+	Item   *pb.Product
+	Reason string
+	Count  int32
+}
+
+func (fe *frontendServer) getFrequentlyBoughtTogether(ctx context.Context, userID string, productIDs []string) ([]fbtView, error) {
+	resp, err := pb.NewRecommendationServiceClient(fe.recommendationSvcConn).ListFrequentlyBoughtTogether(ctx,
+		&pb.FBTRequest{UserId: userID, ProductIds: productIDs, MaxResults: 4})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]fbtView, 0, len(resp.GetItems()))
+	for _, item := range resp.GetItems() {
+		p, err := fe.getProduct(ctx, item.GetProductId())
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to get FBT product info (#%s)", item.GetProductId())
+		}
+		out = append(out, fbtView{
+			Item:   p,
+			Reason: item.GetReason(),
+			Count:  item.GetCooccurrenceCount(),
+		})
+	}
+	return out, nil
+}
+
 func (fe *frontendServer) getAd(ctx context.Context, ctxKeys []string) ([]*pb.Ad, error) {
 	ctx, cancel := context.WithTimeout(ctx, time.Millisecond*100)
 	defer cancel()

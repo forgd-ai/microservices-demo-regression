@@ -225,6 +225,10 @@
 
     </main>
 
+    {{ if $.fbt }}
+        {{ template "fbt" $ }}
+    {{ end }}
+
     {{ if $.recommendations }}
         {{ template "recommendations" $ }}
     {{ end }}

@@ -268,6 +268,12 @@ func (fe *frontendServer) viewCartHandler(w http.ResponseWriter, r *http.Request
 		log.WithField("error", err).Warn("failed to get product recommendations")
 	}
 
+	// ignores the error retrieving FBT suggestions since it is not critical
+	fbt, err := fe.getFrequentlyBoughtTogether(r.Context(), sessionID(r), cartIDs(cart))
+	if err != nil {
+		log.WithField("error", err).Warn("failed to get frequently bought together")
+	}
+
 	shippingCost, err := fe.getShippingQuote(r.Context(), cart, currentCurrency(r))
 	if err != nil {
 		renderHTTPError(log, r, w, errors.Wrap(err, "failed to get shipping quote"), http.StatusInternalServerError)
@@ -306,6 +312,7 @@ func (fe *frontendServer) viewCartHandler(w http.ResponseWriter, r *http.Request
 	if err := templates.ExecuteTemplate(w, "cart", injectCommonTemplateData(r, map[string]interface{}{
 		"currencies":       currencies,
 		"recommendations":  recommendations,
+		"fbt":              fbt,
 		"cart_size":        cartSize(cart),
 		"shipping_cost":    shippingCost,
 		"show_currency":    true,
