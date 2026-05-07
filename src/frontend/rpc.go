@@ -16,6 +16,9 @@ package main
 
 import (
 	"context"
+	"sort"
+	"strings"
+	"sync"
 	"time"
 
 	pb "github.com/GoogleCloudPlatform/microservices-demo/src/frontend/genproto"
@@ -122,17 +125,68 @@ type fbtView struct {
 	Count  int32
 }
 
+// fbtCallKey returns a stable key for an FBT request so concurrent
+// callers with identical inputs can share an upstream call.
+func fbtCallKey(userID string, productIDs []string) string {
+	ids := make([]string, len(productIDs))
+	copy(ids, productIDs)
+	sort.Strings(ids)
+	return userID + "|" + strings.Join(ids, ",")
+}
+
+type fbtInFlight struct {
+	done   chan struct{}
+	result []fbtView
+	err    error
+}
+
+var (
+	fbtInFlightMu     sync.Mutex
+	fbtInFlightCalls  = make(map[string]*fbtInFlight)
+)
+
+// getFrequentlyBoughtTogether coalesces duplicate concurrent FBT
+// requests with the same user and cart contents. Rapid navigation —
+// back-button, the checkout flow, double-clicking through the cart
+// page — can fire the same FBT call several times in quick succession;
+// this collapses them into a single upstream request and shares the
+// result across all waiters.
 func (fe *frontendServer) getFrequentlyBoughtTogether(ctx context.Context, userID string, productIDs []string) ([]fbtView, error) {
+	key := fbtCallKey(userID, productIDs)
+
+	fbtInFlightMu.Lock()
+	if existing, ok := fbtInFlightCalls[key]; ok {
+		fbtInFlightMu.Unlock()
+		select {
+		case <-existing.done:
+			return existing.result, existing.err
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+	}
+	pending := &fbtInFlight{done: make(chan struct{})}
+	fbtInFlightCalls[key] = pending
+	fbtInFlightMu.Unlock()
+
+	defer func() {
+		fbtInFlightMu.Lock()
+		delete(fbtInFlightCalls, key)
+		fbtInFlightMu.Unlock()
+		close(pending.done)
+	}()
+
 	resp, err := pb.NewRecommendationServiceClient(fe.recommendationSvcConn).ListFrequentlyBoughtTogether(ctx,
 		&pb.FBTRequest{UserId: userID, ProductIds: productIDs, MaxResults: 4})
 	if err != nil {
+		pending.err = err
 		return nil, err
 	}
 	out := make([]fbtView, 0, len(resp.GetItems()))
 	for _, item := range resp.GetItems() {
 		p, err := fe.getProduct(ctx, item.GetProductId())
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to get FBT product info (#%s)", item.GetProductId())
+			pending.err = errors.Wrapf(err, "failed to get FBT product info (#%s)", item.GetProductId())
+			return nil, pending.err
 		}
 		out = append(out, fbtView{
 			Item:   p,
@@ -140,6 +194,7 @@ func (fe *frontendServer) getFrequentlyBoughtTogether(ctx context.Context, userI
 			Count:  item.GetCooccurrenceCount(),
 		})
 	}
+	pending.result = out
 	return out, nil
 }
 
