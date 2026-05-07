@@ -58,12 +58,31 @@ namespace cartservice.cartstore
                     }
                 }
                 await _cache.SetAsync(userId, cart.ToByteArray());
+                await AppendHistoryAsync(userId, productId);
             }
             catch (Exception ex)
             {
                 throw new RpcException(new Status(StatusCode.FailedPrecondition, $"Can't access cart storage. {ex}"));
             }
         }
+
+        private async Task AppendHistoryAsync(string userId, string productId)
+        {
+            // History is stored as a newline-separated list of product ids,
+            // most recent first, capped at 50 entries. Older entries are
+            // dropped when the cap is exceeded.
+            const int maxHistory = 50;
+            var key = HistoryKey(userId);
+            var raw = await _cache.GetAsync(key);
+            var existing = raw == null
+                ? Array.Empty<string>()
+                : System.Text.Encoding.UTF8.GetString(raw).Split('\n', StringSplitOptions.RemoveEmptyEntries);
+            var updated = new[] { productId }.Concat(existing).Take(maxHistory).ToArray();
+            var bytes = System.Text.Encoding.UTF8.GetBytes(string.Join('\n', updated));
+            await _cache.SetAsync(key, bytes);
+        }
+
+        private static string HistoryKey(string userId) => $"history:{userId}";
 
         public async Task EmptyCartAsync(string userId)
         {
@@ -96,6 +115,34 @@ namespace cartservice.cartstore
 
                 // We decided to return empty cart in cases when user wasn't in the cache before
                 return new Hipstershop.Cart();
+            }
+            catch (Exception ex)
+            {
+                throw new RpcException(new Status(StatusCode.FailedPrecondition, $"Can't access cart storage. {ex}"));
+            }
+        }
+
+        public async Task<Hipstershop.CartHistory> GetCartHistoryAsync(string userId, int limit)
+        {
+            Console.WriteLine($"GetCartHistoryAsync called with userId={userId}, limit={limit}");
+
+            try
+            {
+                var raw = await _cache.GetAsync(HistoryKey(userId));
+                var history = new Hipstershop.CartHistory { UserId = userId };
+                if (raw == null)
+                {
+                    return history;
+                }
+
+                var ids = System.Text.Encoding.UTF8.GetString(raw)
+                    .Split('\n', StringSplitOptions.RemoveEmptyEntries);
+                if (limit > 0)
+                {
+                    ids = ids.Take(limit).ToArray();
+                }
+                history.ProductIds.AddRange(ids);
+                return history;
             }
             catch (Exception ex)
             {

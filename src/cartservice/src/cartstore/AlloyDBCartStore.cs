@@ -161,6 +161,12 @@ namespace cartservice.cartstore
             }
         }
 
+        public Task<Hipstershop.CartHistory> GetCartHistoryAsync(string userId, int limit)
+        {
+            // History tracking is only implemented in the Redis cart store.
+            return Task.FromResult(new Hipstershop.CartHistory { UserId = userId });
+        }
+
         public bool Ping()
         {
             try
