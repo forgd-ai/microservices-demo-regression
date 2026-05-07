@@ -28,6 +28,7 @@ import grpc
 
 import demo_pb2
 import demo_pb2_grpc
+from fbt_data import COOCCURRENCE
 from grpc_health.v1 import health_pb2
 from grpc_health.v1 import health_pb2_grpc
 
@@ -85,6 +86,63 @@ class RecommendationService(demo_pb2_grpc.RecommendationServiceServicer):
         response.product_ids.extend(prod_list)
         return response
 
+    def ListFrequentlyBoughtTogether(self, request, context):
+        max_results = request.max_results if request.max_results > 0 else 4
+        cart_ids = list(request.product_ids)
+
+        # Pull recent cart history for this user, weighted lower than the
+        # current cart since older interest is a weaker signal.
+        history_ids = []
+        if request.user_id and cart_service_stub is not None:
+            try:
+                history = cart_service_stub.GetCartHistory(
+                    demo_pb2.GetCartHistoryRequest(user_id=request.user_id, limit=20))
+                history_ids = [pid for pid in history.product_ids if pid not in cart_ids]
+            except grpc.RpcError as e:
+                logger.warn("GetCartHistory failed, falling back to cart-only signal: {}".format(e))
+
+        seeds = [(pid, 1.0) for pid in cart_ids] + [(pid, 0.3) for pid in history_ids]
+
+        # Aggregate scores per candidate product, plus the top contributing
+        # seed item so we can produce a human-readable reason.
+        scores = {}            # candidate_id -> aggregated score
+        counts = {}            # candidate_id -> raw cooccurrence count for the top contributor
+        top_contributor = {}   # candidate_id -> seed product_id that contributed most
+        for seed_id, weight in seeds:
+            for cand_id, count in COOCCURRENCE.get(seed_id, []):
+                if cand_id in cart_ids:
+                    continue
+                score = count * weight
+                scores[cand_id] = scores.get(cand_id, 0) + score
+                if score > counts.get(cand_id, -1):
+                    counts[cand_id] = count
+                    top_contributor[cand_id] = seed_id
+
+        ranked = sorted(scores.items(), key=lambda kv: kv[1], reverse=True)[:max_results]
+
+        # Resolve product names once for the contributors that appear in the
+        # response so we can include them in the reason text.
+        contributor_ids = {top_contributor[pid] for pid, _ in ranked}
+        names = {}
+        for pid in contributor_ids:
+            try:
+                p = product_catalog_stub.GetProduct(demo_pb2.GetProductRequest(id=pid))
+                names[pid] = p.name
+            except grpc.RpcError:
+                names[pid] = pid
+
+        response = demo_pb2.FBTResponse()
+        for cand_id, _ in ranked:
+            contrib = top_contributor[cand_id]
+            response.items.append(demo_pb2.FBTItem(
+                product_id=cand_id,
+                cooccurrence_count=counts[cand_id],
+                reason="Often bought with {}".format(names.get(contrib, contrib)),
+            ))
+        logger.info("[Recv ListFrequentlyBoughtTogether] cart={} history_len={} returned={}".format(
+            cart_ids, len(history_ids), [i.product_id for i in response.items]))
+        return response
+
     def Check(self, request, context):
         return health_pb2.HealthCheckResponse(
             status=health_pb2.HealthCheckResponse.SERVING)
@@ -134,6 +192,16 @@ if __name__ == "__main__":
     logger.info("product catalog address: " + catalog_addr)
     channel = grpc.insecure_channel(catalog_addr)
     product_catalog_stub = demo_pb2_grpc.ProductCatalogServiceStub(channel)
+
+    # CartService is optional: if unset, FBT falls back to current-cart-only signal.
+    cart_addr = os.environ.get('CART_SERVICE_ADDR', '')
+    cart_service_stub = None
+    if cart_addr:
+        logger.info("cart service address: " + cart_addr)
+        cart_channel = grpc.insecure_channel(cart_addr)
+        cart_service_stub = demo_pb2_grpc.CartServiceStub(cart_channel)
+    else:
+        logger.info("CART_SERVICE_ADDR not set; FBT will not use cart history")
 
     # create gRPC server
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))

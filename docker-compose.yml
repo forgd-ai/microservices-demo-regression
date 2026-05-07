@@ -20,8 +20,9 @@ services:
     environment:
       PORT: "8080"
       PRODUCT_CATALOG_SERVICE_ADDR: productcatalogservice:3550
+      CART_SERVICE_ADDR: cartservice:7070
       DISABLE_PROFILER: "1"
-    depends_on: [productcatalogservice]
+    depends_on: [productcatalogservice, cartservice]
 
   paymentservice:
     image: paymentservice:5096a85
