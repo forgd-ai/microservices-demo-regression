@@ -32,13 +32,14 @@ namespace cartservice.cartstore
 
         public async Task AddItemAsync(string userId, string productId, int quantity)
         {
-            Console.WriteLine($"AddItemAsync called with userId={userId}, productId={productId}, quantity={quantity}");
+            Console.WriteLine($"cart.add user={userId} product={productId} qty={quantity}");
 
             try
             {
                 Hipstershop.Cart cart;
                 var value = await _cache.GetAsync(userId);
-                if (value == null)
+                bool newCart = value == null;
+                if (newCart)
                 {
                     cart = new Hipstershop.Cart();
                     cart.UserId = userId;
@@ -59,6 +60,7 @@ namespace cartservice.cartstore
                 }
                 await _cache.SetAsync(userId, cart.ToByteArray());
                 await AppendHistoryAsync(userId, productId);
+                Console.WriteLine($"cart.add ok user={userId} new={newCart} item_count={cart.Items.Count}");
             }
             catch (Exception ex)
             {
@@ -86,7 +88,7 @@ namespace cartservice.cartstore
 
         public async Task EmptyCartAsync(string userId)
         {
-            Console.WriteLine($"EmptyCartAsync called with userId={userId}");
+            Console.WriteLine($"cart.empty user={userId}");
 
             try
             {
@@ -101,7 +103,7 @@ namespace cartservice.cartstore
 
         public async Task<Hipstershop.Cart> GetCartAsync(string userId)
         {
-            Console.WriteLine($"GetCartAsync called with userId={userId}");
+            Console.WriteLine($"cart.get user={userId}");
 
             try
             {
@@ -124,7 +126,7 @@ namespace cartservice.cartstore
 
         public async Task<Hipstershop.CartHistory> GetCartHistoryAsync(string userId, int limit)
         {
-            Console.WriteLine($"GetCartHistoryAsync called with userId={userId}, limit={limit}");
+            Console.WriteLine($"cart.history user={userId} limit={limit}");
 
             try
             {
