@@ -280,33 +280,12 @@ func (fe *frontendServer) viewCartHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	type cartItemView struct {
-		Item     *pb.Product
-		Quantity int32
-		Price    *pb.Money
+	items, itemsTotal, err := fe.buildCartItemViews(r.Context(), cart, currentCurrency(r))
+	if err != nil {
+		renderHTTPError(log, r, w, err, http.StatusInternalServerError)
+		return
 	}
-	items := make([]cartItemView, len(cart))
-	totalPrice := pb.Money{CurrencyCode: currentCurrency(r)}
-	for i, item := range cart {
-		p, err := fe.getProduct(r.Context(), item.GetProductId())
-		if err != nil {
-			renderHTTPError(log, r, w, errors.Wrapf(err, "could not retrieve product #%s", item.GetProductId()), http.StatusInternalServerError)
-			return
-		}
-		price, err := fe.convertCurrency(r.Context(), p.GetPriceUsd(), currentCurrency(r))
-		if err != nil {
-			renderHTTPError(log, r, w, errors.Wrapf(err, "could not convert currency for product #%s", item.GetProductId()), http.StatusInternalServerError)
-			return
-		}
-
-		multPrice := money.MultiplySlow(*price, uint32(item.GetQuantity()))
-		items[i] = cartItemView{
-			Item:     p,
-			Quantity: item.GetQuantity(),
-			Price:    &multPrice}
-		totalPrice = money.Must(money.Sum(totalPrice, multPrice))
-	}
-	totalPrice = money.Must(money.Sum(totalPrice, *shippingCost))
+	totalPrice := money.Must(money.Sum(itemsTotal, *shippingCost))
 	year := time.Now().Year()
 
 	if err := templates.ExecuteTemplate(w, "cart", injectCommonTemplateData(r, map[string]interface{}{
@@ -322,6 +301,38 @@ func (fe *frontendServer) viewCartHandler(w http.ResponseWriter, r *http.Request
 	})); err != nil {
 		log.Println(err)
 	}
+}
+
+// cartItemView is the per-line view rendered in the cart and order
+// templates. Price is the line total (unit price × quantity) in the
+// caller's currency.
+type cartItemView struct {
+	Item     *pb.Product
+	Quantity int32
+	Price    *pb.Money
+}
+
+// buildCartItemViews resolves each cart item against the catalog,
+// converts to the caller's currency, computes the line total, and
+// returns the views together with their summed total. The total does
+// not include shipping; callers add that on top.
+func (fe *frontendServer) buildCartItemViews(ctx context.Context, cart []*pb.CartItem, currency string) ([]cartItemView, pb.Money, error) {
+	items := make([]cartItemView, len(cart))
+	total := pb.Money{CurrencyCode: currency}
+	for i, item := range cart {
+		p, err := fe.getProduct(ctx, item.GetProductId())
+		if err != nil {
+			return nil, total, errors.Wrapf(err, "could not retrieve product #%s", item.GetProductId())
+		}
+		price, err := fe.convertCurrency(ctx, p.GetPriceUsd(), currency)
+		if err != nil {
+			return nil, total, errors.Wrapf(err, "could not convert currency for product #%s", item.GetProductId())
+		}
+		linePrice := money.MultiplySlow(*price, uint32(item.GetQuantity()))
+		items[i] = cartItemView{Item: p, Quantity: item.GetQuantity(), Price: &linePrice}
+		total = money.Must(money.Sum(total, linePrice))
+	}
+	return items, total, nil
 }
 
 func (fe *frontendServer) placeOrderHandler(w http.ResponseWriter, r *http.Request) {
