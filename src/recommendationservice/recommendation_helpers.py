@@ -5,6 +5,9 @@ user's cart history, scoring candidate products against the
 co-occurrence map, resolving contributor names, and assembling the
 response. Keeping it out of recommendation_server.py keeps the gRPC
 surface thin and makes the scoring path easier to evolve.
+
+Cart history is weighted below the current cart so a shopper's older
+interest nudges results without dominating what's in the cart now.
 """
 
 import grpc
