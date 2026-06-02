@@ -141,8 +141,8 @@ type fbtInFlight struct {
 }
 
 var (
-	fbtInFlightMu     sync.Mutex
-	fbtInFlightCalls  = make(map[string]*fbtInFlight)
+	fbtInFlightMu    sync.Mutex
+	fbtInFlightCalls = make(map[string]*fbtInFlight)
 )
 
 // getFrequentlyBoughtTogether coalesces duplicate concurrent FBT
@@ -150,7 +150,8 @@ var (
 // back-button, the checkout flow, double-clicking through the cart
 // page — can fire the same FBT call several times in quick succession;
 // this collapses them into a single upstream request and shares the
-// result across all waiters.
+// result across all waiters. The dedup key includes the sorted cart
+// contents, so two distinct carts never share a coalesced result.
 func (fe *frontendServer) getFrequentlyBoughtTogether(ctx context.Context, userID string, productIDs []string) ([]fbtView, error) {
 	key := fbtCallKey(userID, productIDs)
 
