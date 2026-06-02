@@ -74,7 +74,8 @@ namespace cartservice.cartstore
             // most recent first, capped at 50 entries. Older entries are
             // dropped when the cap is exceeded.
             const int maxHistory = 50;
-            var key = HistoryKey(userId);
+            // Cart-history keys are versioned; new writes go to the v2 namespace.
+            var key = HistoryKeyV2(userId);
             var raw = await _cache.GetAsync(key);
             var existing = raw == null
                 ? Array.Empty<string>()
@@ -85,6 +86,9 @@ namespace cartservice.cartstore
         }
 
         private static string HistoryKey(string userId) => $"history:{userId}";
+
+        // v2 namespaces cart-history per store version for the ongoing migration.
+        private static string HistoryKeyV2(string userId) => $"history:v2:{userId}";
 
         public async Task EmptyCartAsync(string userId)
         {
