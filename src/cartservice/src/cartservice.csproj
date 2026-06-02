@@ -13,7 +13,16 @@
     <PackageReference Include="Google.Cloud.SecretManager.V1" Version="2.7.0" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Protobuf Include="protos\Cart.proto" GrpcServices="Both" />
-  </ItemGroup>
+  <!--
+    Proto C# is PRE-GENERATED and committed under protos/ (Cart.cs, CartGrpc.cs)
+    and compiled via the default SDK glob. We do NOT run Grpc.Tools' protoc at
+    build time: its bundled linux/arm64 protoc segfaults (exit 139) in the .NET
+    noble container (grpc/grpc#26032), which breaks native Apple Silicon builds.
+    protos/Cart.proto stays the source of truth. To regenerate after changing it,
+    temporarily re-enable the item below and build on a host where protoc works
+    (e.g. macOS), then copy obj/<cfg>/<tfm>/protos/{Cart,CartGrpc}.cs back here:
+    <ItemGroup>
+      <Protobuf Include="protos\Cart.proto" GrpcServices="Both" />
+    </ItemGroup>
+  -->
 </Project>
