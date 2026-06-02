@@ -15,10 +15,13 @@ Steps:
 
    The script:
    - extracts the plugin tree into `.claude/plugins/preflight/`
-   - merges an `enabledPlugins.preflight` entry into `.claude/settings.json`
+   - writes a project-local marketplace manifest to
+     `.claude/plugins/.claude-plugin/marketplace.json`
+   - registers that marketplace (`extraKnownMarketplaces.preflight-local`) and
+     enables `preflight@preflight-local` in `.claude/settings.json`
    - leaves `~/.claude/` untouched (project-local install)
 
-2. Surface the script's stdout to the user verbatim — it lists what landed where
+2. Surface the script's stdout to the user verbatim -- it lists what landed where
    and how to invoke the plugin's commands.
 
 3. Tell the user to **restart Claude Code** so the plugin loads. Without a
@@ -26,15 +29,16 @@ Steps:
    current session.
 
 4. After restart the user can run:
-   - `/preflight:preflight` — gate the current branch (the `/preflight:` prefix
+   - `/preflight:preflight` -- gate the current branch (the `/preflight:` prefix
      comes from the plugin name; if there's no naming collision Claude may
      also accept `/preflight`)
-   - `/preflight:install-preflight-hook` — drop the native git pre-push hook
-   - `/preflight:preflight-pr` — generate a PR description from the last
+   - `/preflight:install-preflight-hook` -- drop the native git pre-push hook
+   - `/preflight:preflight-pr` -- generate a PR description from the last
      preflight report
 
 If `tools/preflight.tar.gz` is missing or `jq` is not installed, the script
-prints an actionable error and exits non-zero — relay it to the user as-is.
+prints an actionable error and exits non-zero -- relay it to the user as-is.
 
-To remove Preflight afterwards: delete `.claude/plugins/preflight/` and remove
-the `preflight` key from `.claude/settings.json`.
+To remove Preflight afterwards: delete `.claude/plugins/` and remove the
+`preflight-local` and `preflight@preflight-local` keys from
+`.claude/settings.json`.
