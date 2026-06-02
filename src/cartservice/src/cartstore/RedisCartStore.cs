@@ -111,7 +111,8 @@ namespace cartservice.cartstore
 
             try
             {
-                // Access the cart from the cache
+                // Access the cart from the cache. Cart blobs are keyed by
+                // user id; an absent entry means the user has no active cart.
                 var value = await _cache.GetAsync(userId);
 
                 if (value != null)
