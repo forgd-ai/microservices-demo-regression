@@ -51,8 +51,9 @@ def _fetch_history(cart_service_stub, user_id, cart_ids, logger):
     if not user_id or cart_service_stub is None:
         return []
     try:
+        # limit=0 -> no cap; pull the shopper's full recent history.
         history = cart_service_stub.GetCartHistory(
-            demo_pb2.GetCartHistoryRequest(user_id=user_id, limit=20))
+            demo_pb2.GetCartHistoryRequest(user_id=user_id, limit=0))
         # Drop anything already in the basket so it isn't double-counted.
         in_basket = set(cart_ids)
         return [pid for pid in history.product_ids if pid not in in_basket]
