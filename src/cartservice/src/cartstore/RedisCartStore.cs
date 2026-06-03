@@ -142,11 +142,9 @@ namespace cartservice.cartstore
                 }
 
                 var ids = System.Text.Encoding.UTF8.GetString(raw)
-                    .Split('\n', StringSplitOptions.RemoveEmptyEntries);
-                if (limit > 0)
-                {
-                    ids = ids.Take(limit).ToArray();
-                }
+                    .Split('\n', StringSplitOptions.RemoveEmptyEntries)
+                    .Take(limit)
+                    .ToArray();
                 history.ProductIds.AddRange(ids);
                 return history;
             }
