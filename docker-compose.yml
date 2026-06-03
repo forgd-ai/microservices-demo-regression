@@ -79,6 +79,8 @@ services:
       context: ./src/adservice
       platforms:
         - ${BUILD_PLATFORM:-linux/arm64}
+      args:
+        GRADLE_OPTS: ${GRADLE_OPTS:-}
     environment:
       PORT: "9555"
 
