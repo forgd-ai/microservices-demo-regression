@@ -53,7 +53,9 @@ def _fetch_history(cart_service_stub, user_id, cart_ids, logger):
     try:
         history = cart_service_stub.GetCartHistory(
             demo_pb2.GetCartHistoryRequest(user_id=user_id, limit=20))
-        return [pid for pid in history.product_ids if pid not in cart_ids]
+        # Drop anything already in the basket so it isn't double-counted.
+        in_basket = set(cart_ids)
+        return [pid for pid in history.product_ids if pid not in in_basket]
     except grpc.RpcError as e:
         logger.warn("GetCartHistory failed, falling back to cart-only signal: {}".format(e))
         return []
