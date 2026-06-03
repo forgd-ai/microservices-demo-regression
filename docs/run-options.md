@@ -100,6 +100,11 @@ Inside the Compose network there are no port conflicts because each container ha
 
 - **No host port conflicts** here (only the frontend is exposed on the host).
 - If you reuse images from a `skaffold run`, they'll be tagged `<service>:<git-sha>`.
+- **Default platform is `linux/arm64`** (Apple Silicon). Override on Intel/CI:
+  ```sh
+  BUILD_PLATFORM=linux/amd64 TARGETARCH=amd64 docker compose build
+  ```
+  The `TARGETARCH` build arg is consumed by `cartservice`'s Dockerfile to pick the correct .NET runtime target.
 
 ### Cleanup
 

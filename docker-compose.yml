@@ -3,77 +3,106 @@ services:
     image: redis:alpine
     restart: unless-stopped
 
+    platform: ${BUILD_PLATFORM:-linux/arm64}
   emailservice:
     image: emailservice:5096a85
     build:
       context: ./src/emailservice
+      platforms:
+        - ${BUILD_PLATFORM:-linux/arm64}
     environment:
       PORT: "8080"
       DISABLE_PROFILER: "1"
 
+    platform: ${BUILD_PLATFORM:-linux/arm64}
   productcatalogservice:
     image: productcatalogservice:5096a85
     build:
       context: ./src/productcatalogservice
+      platforms:
+        - ${BUILD_PLATFORM:-linux/arm64}
     environment:
       PORT: "3550"
       DISABLE_PROFILER: "1"
 
+    platform: ${BUILD_PLATFORM:-linux/arm64}
   recommendationservice:
     image: recommendationservice:5096a85
     build:
       context: ./src/recommendationservice
+      platforms:
+        - ${BUILD_PLATFORM:-linux/arm64}
     environment:
       PORT: "8080"
       PRODUCT_CATALOG_SERVICE_ADDR: productcatalogservice:3550
       CART_SERVICE_ADDR: cartservice:7070
       DISABLE_PROFILER: "1"
     depends_on: [productcatalogservice, cartservice]
+    platform: ${BUILD_PLATFORM:-linux/arm64}
 
   paymentservice:
     image: paymentservice:5096a85
     build:
       context: ./src/paymentservice
+      platforms:
+        - ${BUILD_PLATFORM:-linux/arm64}
     environment:
       PORT: "50051"
       DISABLE_PROFILER: "1"
 
+    platform: ${BUILD_PLATFORM:-linux/arm64}
   shippingservice:
     image: shippingservice:5096a85
     build:
       context: ./src/shippingservice
+      platforms:
+        - ${BUILD_PLATFORM:-linux/arm64}
     environment:
       PORT: "50051"
       DISABLE_PROFILER: "1"
 
+    platform: ${BUILD_PLATFORM:-linux/arm64}
   currencyservice:
     image: currencyservice:5096a85
     build:
       context: ./src/currencyservice
+      platforms:
+        - ${BUILD_PLATFORM:-linux/arm64}
     environment:
       PORT: "7000"
       DISABLE_PROFILER: "1"
 
+    platform: ${BUILD_PLATFORM:-linux/arm64}
   adservice:
     image: adservice:5096a85
     build:
       context: ./src/adservice
+      platforms:
+        - ${BUILD_PLATFORM:-linux/arm64}
     environment:
       PORT: "9555"
 
+    platform: ${BUILD_PLATFORM:-linux/arm64}
   cartservice:
     image: cartservice:5096a85
     build:
       context: ./src/cartservice/src
+      platforms:
+        - ${BUILD_PLATFORM:-linux/arm64}
+      args:
+        TARGETARCH: ${TARGETARCH:-arm64}
     environment:
       PORT: "7070"
       REDIS_ADDR: redis-cart:6379
     depends_on: [redis-cart]
+    platform: ${BUILD_PLATFORM:-linux/arm64}
 
   checkoutservice:
     image: checkoutservice:5096a85
     build:
       context: ./src/checkoutservice
+      platforms:
+        - ${BUILD_PLATFORM:-linux/arm64}
     environment:
       PORT: "5050"
       PRODUCT_CATALOG_SERVICE_ADDR: productcatalogservice:3550
@@ -83,13 +112,15 @@ services:
       CURRENCY_SERVICE_ADDR: currencyservice:7000
       CART_SERVICE_ADDR: cartservice:7070
       DISABLE_PROFILER: "1"
-    depends_on:
-      [productcatalogservice, shippingservice, paymentservice, emailservice, currencyservice, cartservice]
+    depends_on: [productcatalogservice, shippingservice, paymentservice, emailservice, currencyservice, cartservice]
+    platform: ${BUILD_PLATFORM:-linux/arm64}
 
   frontend:
     image: frontend:5096a85
     build:
       context: ./src/frontend
+      platforms:
+        - ${BUILD_PLATFORM:-linux/arm64}
     environment:
       PORT: "8080"
       PRODUCT_CATALOG_SERVICE_ADDR: productcatalogservice:3550
@@ -103,5 +134,5 @@ services:
       ENABLE_PROFILER: "0"
     ports:
       - "8080:8080"
-    depends_on:
-      [productcatalogservice, currencyservice, cartservice, recommendationservice, shippingservice, checkoutservice, adservice]
+    depends_on: [productcatalogservice, currencyservice, cartservice, recommendationservice, shippingservice, checkoutservice, adservice]
+    platform: ${BUILD_PLATFORM:-linux/arm64}
