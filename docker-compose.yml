@@ -2,6 +2,9 @@ services:
   redis-cart:
     image: redis:alpine
     restart: unless-stopped
+    # Redis refuses to start on arm64 kernels it cannot verify as patched
+    # for the Linux COW bug (e.g. WSL2); cart data is ephemeral
+    command: ["redis-server", "--ignore-warnings", "ARM64-COW-BUG"]
 
     platform: ${BUILD_PLATFORM:-linux/arm64}
   emailservice:
@@ -114,7 +117,15 @@ services:
       CURRENCY_SERVICE_ADDR: currencyservice:7000
       CART_SERVICE_ADDR: cartservice:7070
       DISABLE_PROFILER: "1"
-    depends_on: [productcatalogservice, shippingservice, paymentservice, emailservice, currencyservice, cartservice]
+    depends_on:
+      [
+        productcatalogservice,
+        shippingservice,
+        paymentservice,
+        emailservice,
+        currencyservice,
+        cartservice,
+      ]
     platform: ${BUILD_PLATFORM:-linux/arm64}
 
   frontend:
@@ -136,5 +147,14 @@ services:
       ENABLE_PROFILER: "0"
     ports:
       - "8080:8080"
-    depends_on: [productcatalogservice, currencyservice, cartservice, recommendationservice, shippingservice, checkoutservice, adservice]
+    depends_on:
+      [
+        productcatalogservice,
+        currencyservice,
+        cartservice,
+        recommendationservice,
+        shippingservice,
+        checkoutservice,
+        adservice,
+      ]
     platform: ${BUILD_PLATFORM:-linux/arm64}
