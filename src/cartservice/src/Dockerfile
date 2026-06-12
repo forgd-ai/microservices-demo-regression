@@ -2,7 +2,7 @@
 # no emulation/cross-compile. Multi-arch SDK/runtime tags resolve to the host arch.
 FROM public.ecr.aws/z8z1z1j0/workshop-base-images:mcr.microsoft.com-dotnet-sdk_10.0-noble AS builder
 WORKDIR /app
-COPY cartservice.csproj .
+COPY cartservice.csproj nuget.config ./
 RUN dotnet restore cartservice.csproj -a $(dpkg --print-architecture)
 COPY . .
 RUN dotnet publish cartservice.csproj \
