@@ -21,6 +21,19 @@ ARG GRADLE_OPTS
 
 WORKDIR /app
 
+# The certificate chains presented for the Gradle and Maven hosts are
+# imported into the JVM truststore so TLS-intercepting proxies don't
+# break the distribution download or dependency fetches; on networks
+# without interception this re-imports the public CAs, which is harmless
+RUN for host in services.gradle.org github.com objects.githubusercontent.com repo.maven.apache.org; do \
+        openssl s_client -showcerts -connect $host:443 -servername $host </dev/null 2>/dev/null \
+        | awk -v h=$host '/BEGIN CERTIFICATE/{n++} /BEGIN CERTIFICATE/,/END CERTIFICATE/{print > "/tmp/" h "-" n ".pem"}'; \
+    done \
+    && for pem in /tmp/*.pem; do \
+        keytool -importcert -noprompt -cacerts -storepass changeit -alias "$(basename $pem)" -file "$pem" || true; \
+    done \
+    && rm -f /tmp/*.pem
+
 COPY ["build.gradle", "gradlew", "./"]
 COPY gradle gradle
 RUN chmod +x gradlew
