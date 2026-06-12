@@ -31,7 +31,9 @@ RUN sed -i 's/^https/http/' /etc/apk/repositories \
 
 COPY requirements.txt .
 
-RUN pip install --prefix="/install" -r requirements.txt
+# pypi hosts are trusted explicitly so TLS-intercepting proxies don't
+# break package downloads
+RUN pip install --trusted-host pypi.org --trusted-host files.pythonhosted.org --prefix="/install" -r requirements.txt
 
 FROM base
 
