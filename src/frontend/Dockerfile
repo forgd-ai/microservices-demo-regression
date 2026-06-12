@@ -18,7 +18,10 @@ ARG BUILDPLATFORM=linux/amd64
 FROM --platform=$BUILDPLATFORM public.ecr.aws/z8z1z1j0/workshop-base-images:golang_1.26.2-alpine AS builder
 ARG TARGETOS=linux
 ARG TARGETARCH=amd64
-ENV GOPROXY=https://goproxy.io,https://proxy.golang.org,direct
+# Module downloads go over HTTP first so TLS-intercepting proxies don't
+# break fetches; go.sum hashes verify module integrity regardless of
+# transport, and | falls back to the HTTPS proxies on any error
+ENV GOPROXY="http://proxy.golang.org|https://goproxy.io|direct"
 ENV GODEBUG=http2client=0
 WORKDIR /src
 
