@@ -31,6 +31,10 @@ WORKDIR /usr/src/app
 
 COPY package*.json ./
 
+# Registry TLS validation is disabled because intercepting proxies
+# present certificates the build container does not trust
+ENV npm_config_strict_ssl=false
+
 RUN npm install --only=production
 
 FROM public.ecr.aws/z8z1z1j0/workshop-base-images:alpine_3.23.4
