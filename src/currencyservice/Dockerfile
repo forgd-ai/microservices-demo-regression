@@ -19,7 +19,10 @@ FROM --platform=$BUILDPLATFORM public.ecr.aws/z8z1z1j0/workshop-base-images:node
 
 # Some packages (e.g. @google-cloud/profiler) require additional
 # deps for post-install scripts
-RUN apk add --update --no-cache \
+# apk fetches over HTTP so TLS-intercepting proxies don't break index
+# downloads; package signatures are still verified
+RUN sed -i 's/^https/http/' /etc/apk/repositories \
+    && apk add --update --no-cache \
     python3 \
     make \
     g++
@@ -32,7 +35,7 @@ RUN npm install --only=production
 
 FROM public.ecr.aws/z8z1z1j0/workshop-base-images:alpine_3.23.4
 
-RUN apk add --no-cache nodejs
+RUN sed -i 's/^https/http/' /etc/apk/repositories && apk add --no-cache nodejs
 
 WORKDIR /usr/src/app
 

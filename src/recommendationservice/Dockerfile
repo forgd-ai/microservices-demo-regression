@@ -22,7 +22,10 @@ FROM base AS builder
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
-RUN apk update \
+# apk fetches over HTTP so TLS-intercepting proxies don't break index
+# downloads; package signatures are still verified
+RUN sed -i 's/^https/http/' /etc/apk/repositories \
+    && apk update \
     && apk add --no-cache g++ linux-headers \
     && rm -rf /var/cache/apk/*
 
@@ -35,7 +38,8 @@ FROM base
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
-RUN apk update \
+RUN sed -i 's/^https/http/' /etc/apk/repositories \
+    && apk update \
     && apk add --no-cache libstdc++ \
     && rm -rf /var/cache/apk/*
 
