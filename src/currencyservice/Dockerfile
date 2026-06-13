@@ -19,10 +19,7 @@ FROM --platform=$BUILDPLATFORM public.ecr.aws/z8z1z1j0/workshop-base-images:node
 
 # Some packages (e.g. @google-cloud/profiler) require additional
 # deps for post-install scripts
-# apk fetches over HTTP so TLS-intercepting proxies don't break index
-# downloads; package signatures are still verified
-RUN sed -i 's/^https/http/' /etc/apk/repositories \
-    && apk add --update --no-cache \
+RUN apk add --update --no-cache \
     python3 \
     make \
     g++
@@ -31,13 +28,11 @@ WORKDIR /usr/src/app
 
 COPY package*.json ./
 
-# Registry TLS certificate validation is disabled because intercepting
-# proxies present certificates the build container does not trust
-RUN npm_config_strict_ssl=false npm install --only=production
+RUN npm install --only=production
 
 FROM public.ecr.aws/z8z1z1j0/workshop-base-images:alpine_3.23.4
 
-RUN sed -i 's/^https/http/' /etc/apk/repositories && apk add --no-cache nodejs
+RUN apk add --no-cache nodejs
 
 WORKDIR /usr/src/app
 

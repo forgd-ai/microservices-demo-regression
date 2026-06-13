@@ -22,18 +22,13 @@ FROM base AS builder
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
-# apk fetches over HTTP so TLS-intercepting proxies don't break index
-# downloads; package signatures are still verified
-RUN sed -i 's/^https/http/' /etc/apk/repositories \
-    && apk update \
+RUN apk update \
     && apk add --no-cache g++ linux-headers \
     && rm -rf /var/cache/apk/*
 
 # get packages
 COPY requirements.txt .
-# --trusted-host disables TLS certificate verification for the pypi
-# hosts so TLS-intercepting proxies don't break package downloads
-RUN pip install --trusted-host pypi.org --trusted-host files.pythonhosted.org -r requirements.txt
+RUN pip install -r requirements.txt
 
 FROM base
 
@@ -43,8 +38,7 @@ ENV PYTHONUNBUFFERED=1
 # Enable Profiler
 ENV ENABLE_PROFILER=1
 
-RUN sed -i 's/^https/http/' /etc/apk/repositories \
-    && apk update \
+RUN apk update \
     && apk add --no-cache libstdc++ \
     && rm -rf /var/cache/apk/*
 
